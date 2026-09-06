@@ -7,6 +7,14 @@ import { useCartStore } from '../store/useCartStore';
 import { useAuth } from '../context/AuthContext';
 import Receipt from '../components/Receipt';
 
+// Money off the wire arrives as a fixed-point string. Anything that is not a
+// number is not shown as one: it becomes 0 rather than printing NaN on a
+// receipt, and the sale's own record in the database remains the authority.
+const toAmount = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
 export default function POSCheckout() {
   const { tenant, pharmacyName, currency, user } = useAuth();
   const [products, setProducts] = useState([]);
@@ -155,7 +163,6 @@ export default function POSCheckout() {
     }
 
     const soldItems = cart.map((i) => ({ ...i }));
-    const soldTotals = { subtotal, vat, total: grandTotal };
 
     toast.promise(
       post('sales', {
@@ -173,7 +180,17 @@ export default function POSCheckout() {
           if (res?.data) {
             setReceiptData(res.data);
             setReceiptItems(soldItems);
-            setReceiptTotals(soldTotals);
+            // The receipt reports what the server recorded and charged, never
+            // the browser's arithmetic. VAT is decided per product inside the
+            // sale transaction — medicines are zero-rated under Group 6 of the
+            // Zambian VAT (Zero-Rating) Order — so the flat 16% this page uses
+            // for its running preview printed a VAT line and a total that were
+            // never taken, on a document the customer keeps.
+            setReceiptTotals({
+              subtotal: toAmount(res.data.subtotal),
+              vat: toAmount(res.data.tax_amount),
+              total: toAmount(res.data.total)
+            });
             setFiscal(null);
             setShowReceipt(true);
             clearCart();

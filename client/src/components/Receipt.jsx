@@ -17,8 +17,6 @@ import { X, Printer, Stamp } from 'lucide-react';
  * root rather than inside the modal tree.
  */
 
-const VAT_RATE = 0.16;
-
 const money = (currency, n) =>
   `${currency} ${Number(n || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -178,7 +176,11 @@ export default function Receipt({
           <section style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
             <div style={{ minWidth: '230px' }}>
               {line('Subtotal', money(currency, subtotal))}
-              {line(`VAT (${Math.round(VAT_RATE * 100)}%)`, money(currency, vat))}
+              {/* No rate is named. VAT is decided per product on the server —
+                  medicines are zero-rated, ordinary goods are standard-rated —
+                  so a basket has no single rate to quote, and printing "16%"
+                  beside a zero-rated line stated a rate that was never applied. */}
+              {line('VAT', money(currency, vat))}
               {line('Total', money(currency, total), true)}
 
               <div style={{ marginTop: '10px', paddingTop: '9px', borderTop: '1px dashed #bbb' }}>
